@@ -1,68 +1,93 @@
+<div align="center">
+
 # Label-Free OCR Quality Monitoring
 
-> 정답 라벨이 바로 생기지 않는 운영 환경에서 OCR 성능 저하를 단정하지 않고, **품질 위험 신호**를 조기에 선별하는 모니터링 프로토타입입니다.
+**정답 라벨이 없는 환경에서 OCR 출력 변화를 감지하고 검토 우선순위를 만드는 모니터링 도구**
 
-**Status:** Portfolio implementation plan · Problem formulation completed
+![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
+![Tests](https://img.shields.io/badge/Tests-pytest-15803D)
+![License](https://img.shields.io/badge/License-MIT-0F766E)
 
-## 문제 정의
+</div>
 
-고정된 OCR 모델의 품질은 저절로 낮아지지 않습니다. 운영 품질은 입력 문서, 촬영 환경, 전처리 파이프라인, 모델·라이브러리 버전이 달라질 때 흔들립니다. 하지만 gold text가 없으면 CER/WER 하락을 직접 계산할 수 없습니다.
+## 한눈에 보기
 
-따라서 이 프로젝트는 `정확도 하락 탐지`가 아니라 `검토가 필요한 품질 위험 탐지`를 목표로 합니다.
+| 항목 | 내용 |
+|---|---|
+| 문제 | 새 문서 배치에서 평소와 다른 OCR 결과를 라벨 없이 선별 |
+| 입력 | 기준 OCR JSONL과 신규 OCR JSONL |
+| 방법 | 텍스트 임베딩, 최근접 거리, robust z-score, centroid shift, RBF-MMD |
+| 출력 | 위험 수준, 검토 추천 레코드, 요약 JSON·JSONL·Markdown 리포트 |
+| 범위 | 정확도 저하를 단정하지 않는 **품질 위험·검토 우선순위 도구** |
 
-## 위험 신호
+## 왜 만들었나
 
-| 신호 | 예시 | 역할 |
-|---|---|---|
-| 예측 일관성 | TTA 결과 간 edit distance | 작은 입력 변화에 출력이 불안정한지 측정 |
-| 모델 불일치 | ensemble 간 disagreement | 모델별 판독 차이를 위험 신호로 사용 |
-| 업무 규칙 | 날짜·금액 형식, 합계 검증 | 명확한 구조 위반 검출 |
-| 이미지 품질 | blur, contrast, skew | 입력 분포 변화의 원인 후보 제공 |
-| 출력 분포 | 길이, 문자 비율, 필드 결측률 | 시간에 따른 집단 변화 감지 |
-| 내부 confidence | token/line confidence | 모델 자체 신뢰도 보조 신호 |
+실제 운영에서는 OCR 정답이 바로 쌓이지 않아 CER·WER을 즉시 계산하기 어렵습니다.
+이 프로젝트는 정확도를 추측하는 대신, 정상 배치와 비교해 의미 공간에서 멀어진
+레코드와 집단 변화를 찾아 사람이 먼저 확인할 대상을 정합니다.
 
-## 내가 주도한 부분
-
-- `모델 드리프트`와 `운영 입력·파이프라인 변화`를 구분
-- 라벨 없이 CER/WER 저하를 주장할 수 없다는 평가 경계 설정
-- 단일 confidence가 아닌 일관성·규칙·입력 품질·분포 변화를 결합한 risk score 설계
-- 위험 표본을 사람이 검수하고 그 결과로 임계값을 보정하는 closed loop 제안
-
-## 목표 아키텍처
+## 동작 흐름
 
 ```mermaid
 flowchart LR
-    D["Document stream"] --> P["OCR + preprocessing"]
-    P --> S1["Consistency"]
-    P --> S2["Business rules"]
-    D --> S3["Image quality"]
-    P --> S4["Output shift"]
-    S1 --> R["Risk score"]
-    S2 --> R
-    S3 --> R
-    S4 --> R
-    R --> H["Human review sample"]
-    H --> C["Threshold calibration"]
+    A["Accepted baseline OCR"] --> E["Text embedding"]
+    B["New OCR batch"] --> E
+    E --> N["Nearest-neighbor distance"]
+    E --> C["Centroid shift + RBF-MMD"]
+    N --> R["Robust anomaly score"]
+    C --> R
+    R --> O["Review queue + report"]
 ```
 
-## 현재 한계
+## 빠른 실행
 
-- 아직 공개 가능한 실제 운영 데이터와 완성된 구현체는 없습니다.
-- 위험 점수는 정확도 자체가 아니며, 소량의 수동 라벨로 탐지력을 검증해야 합니다.
-- 문서 유형별 규칙과 임계값이 달라 도메인별 calibration이 필요합니다.
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -e ".[dev]"
 
-## 구현 계획
+ocr-embedding-monitor \
+  --baseline examples/baseline.jsonl \
+  --candidate examples/candidate_corrupted.jsonl \
+  --output-dir outputs/demo \
+  --backend hash
 
-- [ ] 합성 영수증·문서 데이터와 변형 generator
-- [ ] typed OCR event schema와 batch ingestion
-- [ ] consistency·rule·image-quality feature 구현
-- [ ] 시간창별 drift detector와 alert 정책
-- [ ] 수동 검수 sample을 이용한 Precision@k·Risk Lift 평가
-- [ ] FastAPI, PostgreSQL, dashboard, Docker, CI
+pytest
+```
 
-자세한 학습 계획은 [LEARNING_ROADMAP.md](docs/LEARNING_ROADMAP.md)에 정리했습니다.
+`hash` 백엔드는 외부 모델이나 API 없이 예제를 재현합니다. 실제 의미 기반 비교에는
+`sentence-transformers` 추가 의존성과 `BAAI/bge-m3` 같은 임베딩 모델을 사용할 수 있습니다.
 
-## 개발 방식
+## 구현 내용
 
-문제 정의와 평가 경계, 위험 신호 설계는 직접 수행했습니다. 구현 단계에서는 AI 코딩 도구를 활용하되, 합성 테스트·타입·데이터 검증·재현 절차로 결과를 직접 검증할 계획입니다.
+- JSONL 입력 검증과 안정적인 레코드 ID 처리
+- deterministic hashing 및 sentence-transformers 임베딩 백엔드
+- 기준 배치 leave-one-out 최근접 거리 캘리브레이션
+- robust median/MAD 기반 이상 점수
+- centroid cosine distance와 RBF Maximum Mean Discrepancy
+- 레코드별 검토 추천 및 재현 가능한 실행 해시
+- CLI, 단위 테스트, GitHub Actions
 
+## 저장소 구성
+
+```text
+src/ocr_embedding_monitor/   detector, embedding, metrics, CLI
+examples/                    합성 baseline·정상·손상 예제
+tests/                       detector, I/O, end-to-end 테스트
+.github/workflows/           자동 테스트
+docs/LEARNING_ROADMAP.md     데이터·운영 확장 계획
+```
+
+## 해석 범위
+
+이 도구가 출력하는 값은 OCR 정확도나 오류율이 아닙니다. 입력 분포 변화나 새로운
+문서 유형처럼 검토가 필요한 변화를 우선순위화하는 신호입니다. 실제 품질 저하 판단과
+임계값 보정에는 표본 검수가 필요합니다.
+
+## 담당 역할
+
+문제 정의, 라벨 없는 평가 경계, 위험 신호 설계와 결과 해석을 주도했습니다.
+AI 코딩 도구는 구현과 디버깅에 활용했으며, 공개 코드는 합성 예제·테스트·재현 절차로
+검증할 수 있게 구성했습니다.
+
+[학습 및 운영 확장 계획](docs/LEARNING_ROADMAP.md)
