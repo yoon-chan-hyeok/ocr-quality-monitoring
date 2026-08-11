@@ -21,16 +21,16 @@
 |---|---|
 | **문제** | CER·WER 정답이 아직 없을 때 새 OCR batch에서 무엇을 먼저 검수할까? |
 | **입력** | accepted baseline JSONL + candidate JSONL |
-| **신호** | nearest-neighbor distance · robust z · centroid shift · RBF-MMD |
-| **출력** | batch 위험 수준, record별 검토 추천, JSON·JSONL·Markdown report |
+| **판단** | 평소와 다른 OCR 결과와 전체 묶음의 변화를 함께 확인 |
+| **출력** | 사람이 먼저 볼 결과를 순서대로 정리하고 보고서로 저장 |
 | **검증** | synthetic fixture, deterministic backend, unit test, GitHub Actions |
 
 <table>
 <tr>
-<td width="25%" align="center"><h3>0 Labels</h3><sub>Required for<br/>Initial Triage</sub></td>
-<td width="25%" align="center"><h3>4 Views</h3><sub>Local + Global<br/>Drift Signals</sub></td>
-<td width="25%" align="center"><h3>2 Backends</h3><sub>Hash + Semantic<br/>Embedding</sub></td>
-<td width="25%" align="center"><h3>CLI + CI</h3><sub>Runnable and<br/>Tested</sub></td>
+<td width="25%" align="center"><h3>정답 없이 시작</h3><sub>라벨이 늦어도<br/>바로 점검</sub></td>
+<td width="25%" align="center"><h3>이상 결과 우선</h3><sub>사람이 볼<br/>순서를 자동 정리</sub></td>
+<td width="25%" align="center"><h3>한 줄 실행</h3><sub>샘플 데이터로<br/>즉시 확인</sub></td>
+<td width="25%" align="center"><h3>자동 테스트</h3><sub>GitHub Actions로<br/>동작 확인</sub></td>
 </tr>
 </table>
 
