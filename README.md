@@ -73,10 +73,10 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -e ".[dev]"
 
-ocr-embedding-monitor \
-  --baseline examples/baseline.jsonl \
-  --candidate examples/candidate_corrupted.jsonl \
-  --output-dir outputs/demo \
+ocr-embedding-monitor `
+  --baseline examples/baseline.jsonl `
+  --candidate examples/candidate_corrupted.jsonl `
+  --output-dir outputs/demo `
   --backend hash
 
 pytest
