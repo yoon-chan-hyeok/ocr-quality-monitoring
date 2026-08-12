@@ -23,6 +23,22 @@
 
 이 점수는 OCR accuracy가 아닙니다. 라벨이 도착하기 전 제한된 검수 시간을 어디에 먼저 쓸지 정하는 신호입니다.
 
+## 설계 의도
+
+### 왜 embedding을 사용했는가
+
+실제 배포 환경에서는 새 문서가 들어온 직후 비교할 정답 transcription이 없는 경우가 많습니다. 그렇다고 OCR text의 길이나 confidence만 보면 새로운 양식과 언어, 손상 패턴처럼 입력 자체가 달라진 상황을 충분히 잡기 어렵습니다. 그래서 승인된 baseline과 새 입력을 같은 embedding space에 놓고, 평소 데이터에서 얼마나 멀어졌는지를 실패 가능성의 대리 신호로 사용했습니다.
+
+Embedding distance가 크다고 OCR이 틀렸다는 뜻은 아닙니다. 정상적인 새 문서 유형도 멀리 떨어질 수 있습니다. 따라서 이 값은 자동 실패 판정에 쓰지 않고, 사람이 먼저 확인할 문서를 고르는 데만 사용합니다.
+
+### 왜 record와 batch를 나눴는가
+
+일부 문서만 손상되면 개별 record distance가 먼저 커지고, 새로운 공급처나 양식이 한꺼번에 들어오면 batch 전체 분포가 움직일 수 있습니다. 두 상황은 대응 방법이 다르기 때문에 local anomaly와 global drift를 분리했습니다.
+
+### 왜 작은 CLI로 시작했는가
+
+Dashboard와 service를 먼저 만들기 전에 input schema, score와 output contract가 실제로 이어지는지 확인하려고 했습니다. Synthetic JSONL과 deterministic hash backend로 외부 API 없이 전체 경로를 재현하고, 의미 기반 embedding은 선택적으로 교체할 수 있게 했습니다.
+
 ## 동작 구조
 
 ```mermaid
