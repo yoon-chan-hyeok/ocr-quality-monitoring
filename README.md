@@ -1,8 +1,8 @@
-![Label-Free OCR Quality Monitor — project hero](assets/project-hero.svg)
+![Label-Free OCR Quality Monitor project hero](assets/project-hero.svg)
 
 <div align="center">
 
-**정답 라벨이 늦게 오는 환경에서 OCR 변화 신호를 검토 우선순위로 바꾸는 실행 가능한 모니터링 패키지**
+**Gold label이 늦게 도착하는 OCR pipeline에서 embedding-space local/global drift를 측정하고, record-level review queue와 batch risk signal을 생성하는 label-free monitor**
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
 ![Tests](https://github.com/yoon-chan-hyeok/ocr-quality-monitoring/actions/workflows/tests.yml/badge.svg)
@@ -15,26 +15,17 @@
 
 ---
 
-## 30초 요약
+## 프로젝트 개요
 
-| 질문 | 답 |
+| 구분 | 내용 |
 |---|---|
-| **문제** | CER·WER 정답이 아직 없을 때 새 OCR batch에서 무엇을 먼저 검수할까? |
-| **입력** | accepted baseline JSONL + candidate JSONL |
-| **판단** | 평소와 다른 OCR 결과와 전체 묶음의 변화를 함께 확인 |
-| **출력** | 사람이 먼저 볼 결과를 순서대로 정리하고 보고서로 저장 |
-| **검증** | synthetic fixture, deterministic backend, unit test, GitHub Actions |
+| **Input** | accepted baseline JSONL과 새 candidate JSONL |
+| **Local signal** | baseline leave-one-out nearest-neighbor distance를 median/MAD로 calibration해 record anomaly score를 계산 |
+| **Global signal** | centroid cosine distance와 RBF-MMD로 candidate batch 전체의 분포 이동을 측정 |
+| **Output** | review JSONL, batch summary JSON, Markdown report, reproducible run hash |
+| **Verification** | synthetic fixture, deterministic hash backend, unit test, GitHub Actions |
 
-<table>
-<tr>
-<td width="25%" align="center"><h3>정답 없이 시작</h3><sub>라벨이 늦어도<br/>바로 점검</sub></td>
-<td width="25%" align="center"><h3>이상 결과 우선</h3><sub>사람이 볼<br/>순서를 자동 정리</sub></td>
-<td width="25%" align="center"><h3>한 줄 실행</h3><sub>샘플 데이터로<br/>즉시 확인</sub></td>
-<td width="25%" align="center"><h3>자동 테스트</h3><sub>GitHub Actions로<br/>동작 확인</sub></td>
-</tr>
-</table>
-
-> 이 도구는 OCR 정확도를 추측하지 않습니다. **평소와 달라져 사람이 먼저 확인해야 할 대상을 정렬**합니다.
+출력값은 OCR accuracy나 CER/WER의 대체값이 아닙니다. 라벨이 도착하기 전 검토 예산을 어디에 먼저 쓸지 정하는 risk signal입니다.
 
 ## 문제와 판단
 
@@ -65,7 +56,7 @@ flowchart LR
     R --> P["JSON · JSONL · MD<br/>reports"]
 ```
 
-## What I shipped
+## 구현 범위
 
 - JSONL schema validation과 stable record ID
 - deterministic hashing backend와 sentence-transformers backend
@@ -122,8 +113,9 @@ assets/                      portfolio hero artwork
 - 새 문서 유형이 정상 변화라면 baseline 승인·갱신 절차가 필요합니다.
 - embedding distance만으로 개인정보·안전 관련 판정을 자동화해서는 안 됩니다.
 
-## Ownership & collaboration
+## 기여 범위
 
-문제 정의, “라벨 없이 어디까지 말할 수 있는가”라는 평가 경계, local/global signal 조합과 결과 해석을 직접 주도했습니다. AI 코딩 도구는 구현·디버깅에 활용했고, 공개 코드는 합성 예제·테스트·CI로 검증 가능하게 구성했습니다.
+문제 정의, label-free signal의 해석 범위, local/global signal 조합과 출력 계약을 설계했습니다. 공개 코드는 synthetic example, deterministic backend, 테스트와 CI로 실행 경로를 검증할 수 있게 구성했습니다.
 
 [운영 수준 확장 로드맵](docs/LEARNING_ROADMAP.md)
+
