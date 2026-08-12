@@ -1,31 +1,19 @@
-# Learning & Engineering Roadmap
+# 미구현 운영 확장 계획
 
-이 저장소는 현재 다섯 프로젝트 중 학습을 통해 가장 크게 확장할 프로젝트입니다.
+현재 저장소는 JSONL batch를 처리하는 CLI와 synthetic fixture를 제공합니다. 아래 항목은 아직 구현하지 않은 학습·확장 후보입니다.
 
-## 1. 데이터 파이프라인
+## 데이터와 모니터링
 
-- Pydantic 기반 OCR event schema
-- idempotent batch ingestion과 실패 레코드 격리
-- PostgreSQL에 문서·실행·feature·검수 결과 저장
-- 시간창 집계 SQL과 데이터 품질 테스트
+- OCR event schema, idempotent ingestion과 실패 record 격리
+- PostgreSQL에 document, run, feature와 review 결과 저장
+- 문서 유형과 계절성을 반영한 baseline window
+- drift 주입 평가, alert Precision@k, Risk Lift와 false alert 분석
 
-**완료 증거:** 손상·중복·지연 이벤트를 포함한 통합 테스트
+## 서비스
 
-## 2. 통계적 모니터링
+- FastAPI ingestion/query API와 background worker
+- retry와 dead-letter 처리
+- metrics, structured logging, dashboard와 alert runbook
+- Docker Compose와 CI regression test
 
-- PSI, KS, Jensen-Shannon divergence의 가정과 한계 학습
-- 계절성·문서 유형을 고려한 baseline window
-- alert precision, Precision@k, Risk Lift, calibration 평가
-- 다중 신호 가중치와 threshold를 validation set에서만 결정
-
-**완료 증거:** 합성 drift 주입 실험과 false alert 분석
-
-## 3. 백엔드·운영
-
-- FastAPI ingestion/query API
-- background worker와 retry/dead-letter 처리
-- metrics·structured logging·alert runbook
-- Docker Compose와 CI 회귀 테스트
-
-**완료 증거:** 입력 분포 변화 주입 → 경보 → 검수 → 재보정 end-to-end demo
-
+완료 기준은 공개 synthetic event로 `ingestion → alert → review → recalibration`을 재현하는 end-to-end demo입니다.
