@@ -9,13 +9,23 @@
 ![License](https://img.shields.io/badge/License-MIT-0F766E)
 ![Scope](https://img.shields.io/badge/Scope-Risk%20Signal%2C%20Not%20Accuracy-D97706)
 
-[문제와 판단](#문제와-판단) · [동작 구조](#monitoring-flow) · [빠른 실행](#quick-start) · [운영 확장](docs/LEARNING_ROADMAP.md)
+[문제와 판단](#문제와-판단) · [동작 구조](#모니터링-흐름) · [빠른 실행](#빠른-실행) · [운영 확장](docs/LEARNING_ROADMAP.md)
 
 </div>
 
 ---
 
-## 프로젝트 개요
+## 이 프로젝트는
+
+OCR 운영 환경에서는 새 문서가 들어온 직후 정답 transcription이 없는 경우가 많습니다. CER이나 WER을 계산할 수 있을 때까지 기다리면 새로운 문서 양식, 언어, 촬영 조건과 손상 패턴을 늦게 발견합니다. 이 프로젝트는 정상으로 승인된 baseline과 새 candidate의 embedding을 비교해 라벨 없이 변화를 감시합니다.
+
+개별 record가 baseline에서 얼마나 떨어졌는지와 batch 전체 분포가 얼마나 이동했는지를 따로 계산합니다. 두 신호는 정확도 추정치가 아니라 사람의 검수 순서를 정하는 데 사용합니다. 실행 결과는 review queue, batch summary와 Markdown report로 남습니다.
+
+### 시작한 이유
+
+운영 모니터링은 라벨이 준비된 실험 환경보다 먼저 작동해야 합니다. 완전 자동 판정 대신 이상 가능성이 큰 결과를 먼저 보여주면 제한된 검수 시간을 더 필요한 곳에 쓸 수 있습니다. 이 판단을 설치 가능한 CLI와 테스트가 있는 작은 패키지로 구현했습니다.
+
+## 상세 설명
 
 | 구분 | 내용 |
 |---|---|
@@ -40,7 +50,7 @@
 
 최종 출력은 pass/fail 정답이 아니라 검수자가 사용할 **review queue**입니다.
 
-## Monitoring flow
+## 모니터링 흐름
 
 ```mermaid
 flowchart LR
@@ -67,7 +77,7 @@ flowchart LR
 - installable CLI, synthetic examples, tests, GitHub Actions
 - 결과를 “accuracy”로 오해하지 않도록 명시한 interpretation boundary
 
-## Quick start
+## 빠른 실행
 
 ```powershell
 python -m venv .venv
@@ -85,7 +95,7 @@ pytest
 
 `hash` backend는 외부 모델·API 없이 전체 흐름을 재현합니다. 의미 기반 비교에는 `sentence-transformers` 추가 의존성과 BGE 계열 임베딩을 사용할 수 있습니다.
 
-## Output contract
+## 출력 형식
 
 | 산출물 | 용도 |
 |---|---|
@@ -94,7 +104,7 @@ pytest
 | Markdown report | 실행 결과를 빠르게 검토·공유 |
 | Run hash | 동일 입력·설정 실행의 추적성 |
 
-## Repository map
+## 저장소 구성
 
 ```text
 src/ocr_embedding_monitor/   detector, embedding, metrics, CLI
@@ -105,7 +115,7 @@ docs/LEARNING_ROADMAP.md     data and production expansion plan
 assets/                      portfolio hero artwork
 ```
 
-## Decision boundary
+## 해석 범위
 
 - signal은 OCR error rate나 accuracy가 아닙니다.
 - domain shift가 반드시 품질 저하를 의미하지는 않습니다.
@@ -118,4 +128,5 @@ assets/                      portfolio hero artwork
 문제 정의, label-free signal의 해석 범위, local/global signal 조합과 출력 계약을 설계했습니다. 공개 코드는 synthetic example, deterministic backend, 테스트와 CI로 실행 경로를 검증할 수 있게 구성했습니다.
 
 [운영 수준 확장 로드맵](docs/LEARNING_ROADMAP.md)
+
 
