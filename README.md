@@ -1,15 +1,15 @@
-![Label-Free OCR Quality Monitor project hero](assets/project-hero.svg)
+![Label-Free OCR Failure Monitoring project hero](assets/project-hero.svg)
 
 <div align="center">
 
-**정답 transcription이 늦게 도착하는 OCR pipeline에서 embedding drift를 측정해 먼저 검수할 record와 batch를 정하는 CLI**
+**정답이 없는 OCR 환경에서 confidence와 embedding signal의 역할을 비교하고, 공개본에서는 embedding drift를 검수 순서로 연결한 프로젝트**
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
 ![Tests](https://github.com/yoon-chan-hyeok/ocr-quality-monitoring/actions/workflows/tests.yml/badge.svg)
 ![License](https://img.shields.io/badge/License-MIT-0F766E)
 ![Scope](https://img.shields.io/badge/Scope-Risk%20Signal%2C%20Not%20Accuracy-D97706)
 
-[동작 구조](#동작-구조) · [빠른 실행](#빠른-실행) · [출력](#출력) · [미구현 확장](docs/LEARNING_ROADMAP.md)
+[연구에서 확인한 것](#연구에서-확인한-것) · [동작 구조](#동작-구조) · [빠른 실행](#빠른-실행) · [실험 맥락](docs/EXPERIMENT_CONTEXT.md)
 
 </div>
 
@@ -25,13 +25,26 @@
 
 이 프로젝트는 OCR 오류를 자동 판정하려는 도구가 아닙니다. 승인된 baseline과 새 candidate를 비교해 제한된 검수 시간을 어디에 먼저 쓸지 정하는 risk signal을 만듭니다.
 
+## 연구에서 확인한 것
+
+원 연구에서는 FUNSD 199개 문서에 9개 조건을 적용한 1,791건과 CORD v2 200개 문서에 6개 조건을 적용한 1,200건을 사용했습니다. OCR confidence를 먼저 baseline으로 두고, sentence embedding 기반 novelty를 추가했을 때 어떤 오류에서 검수 순위가 좋아지는지 비교했습니다. Gold transcription은 detector 입력이 아니라 사후 평가에만 사용했습니다.
+
+| 대표 조건 | Confidence AUPRC | 비교 조합 | 조합 AUPRC | 해석 |
+|---|---:|---|---:|---|
+| FUNSD 전체 degradation | 0.8295 | confidence + direction | 0.8454 | Confidence가 이미 강했고 추가 이득은 작았음 |
+| CORD alphabetic mismatch | 0.5907 | confidence + kNN5 | 0.6904 | 이 조건에서는 kNN novelty가 보완 신호로 작동 |
+
+Embedding 결합은 모든 조건에서 좋아지지 않았습니다. 문서 전체가 훼손된 경우와 숫자·단어 하나만 바뀐 local critical error는 서로 다른 탐지 문제였습니다. 전체 의미가 유지되면 embedding과 document-level confidence가 정상이어도 중요한 field 하나는 틀릴 수 있습니다.
+
+위 표는 원 연구의 집계 결과입니다. 현재 공개 저장소는 원 corpus와 전체 inference pipeline을 포함하지 않고, embedding drift를 record·batch risk triage로 연결한 실행 가능한 공개본입니다. 데이터, 조건과 해석 범위는 [실험 맥락](docs/EXPERIMENT_CONTEXT.md)에 분리했습니다.
+
 ## 접근과 선택 이유
 
 개별 record가 baseline에서 얼마나 떨어졌는지와 candidate batch 전체 분포가 얼마나 이동했는지를 분리했습니다. 두 신호를 review queue와 report로 내보내 사람이 record 단위 이상과 공급처·양식 단위 변화를 따로 확인할 수 있게 했습니다.
 
 ### 왜 embedding을 사용했는가
 
-실제 배포 환경에서는 새 문서가 들어온 직후 비교할 정답 transcription이 없는 경우가 많습니다. 그렇다고 OCR text의 길이나 confidence만 보면 새로운 양식과 언어, 손상 패턴처럼 입력 자체가 달라진 상황을 충분히 잡기 어렵습니다. 그래서 승인된 baseline과 새 입력을 같은 embedding space에 놓고, 평소 데이터에서 얼마나 멀어졌는지를 실패 가능성의 대리 신호로 사용했습니다.
+실제 배포 환경에서는 새 문서가 들어온 직후 비교할 정답 transcription이 없는 경우가 많습니다. Confidence는 유용한 baseline이지만 OCR model 자신의 확신만 보여줍니다. 결과 text가 정상 reference의 의미 공간에서 얼마나 벗어났는지는 별도 신호로 볼 필요가 있어, 승인된 baseline과 새 입력을 같은 embedding space에 놓고 거리를 비교했습니다.
 
 Embedding distance가 크다고 OCR이 틀렸다는 뜻은 아닙니다. 정상적인 새 문서 유형도 멀리 떨어질 수 있습니다. 따라서 이 값은 자동 실패 판정에 쓰지 않고, 사람이 먼저 확인할 문서를 고르는 데만 사용합니다.
 
@@ -102,11 +115,12 @@ pytest
 - domain shift가 품질 저하를 의미하지는 않습니다.
 - 실제 alert threshold는 검수 결과와 업무 비용으로 보정해야 합니다.
 - 정상적인 새 문서 유형은 승인 후 baseline 갱신 절차가 필요합니다.
+- 숫자나 핵심 단어 하나만 틀린 local error는 document-level embedding으로 놓칠 수 있습니다.
 - embedding distance만으로 개인정보나 안전 관련 결정을 자동화해서는 안 됩니다.
 - 현재 공개 결과는 synthetic fixture로 실행 경로를 검증한 것이며, 실제 OCR corpus의 error detection 성능을 주장하지 않습니다.
 
 ## 기여
 
-문제 정의, label-free signal의 역할, record와 batch 신호 조합, 출력 계약과 해석 범위를 설계했습니다. 공개 코드는 synthetic example, deterministic backend, 테스트와 CI로 전체 경로를 확인할 수 있게 구성했습니다.
+정답 없는 운영환경의 failure detection 문제, confidence baseline, embedding novelty 가설, numeric·local error의 위험과 평가 방향을 설계했습니다. Codex를 활용해 inference와 corruption 실험, feature·detector 비교, 집계, 재시작 가능한 실행과 테스트를 반복 수정·검증했습니다. 공개 코드는 synthetic example, deterministic backend, 테스트와 CI로 risk triage 경로를 확인할 수 있게 구성했습니다.
 
 [미구현 운영 확장 계획](docs/LEARNING_ROADMAP.md)
