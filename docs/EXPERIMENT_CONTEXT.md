@@ -28,6 +28,6 @@ Confidence는 예상보다 강한 baseline이었다. Embedding signal은 일부 
 
 현재 저장소에는 원 corpus, OCR inference output과 전체 실험 harness를 포함하지 않는다. 공개 코드는 승인 baseline과 새 candidate를 받아 record anomaly와 batch drift를 계산하고 review queue를 만드는 작은 CLI다. Synthetic fixture와 deterministic backend는 실행 경로를 검증하기 위한 것이며, 위 연구 성능을 재현하지 않는다.
 
-## 구현 기여
+## 작업 범위
 
-문제 정의, confidence baseline, embedding novelty 가설, detector 비교와 결과 해석을 설계했다. Codex를 활용해 OCR inference와 corruption 실험, feature extraction, 평가 집계, 재시작 가능한 실행과 테스트를 반복 수정·검증했다.
+문제 정의, confidence baseline, embedding novelty 가설, detector 비교와 결과 해석을 설계했다. OCR inference와 corruption 실험, feature extraction, 평가 집계, 재시작 가능한 실행과 테스트를 반복하며 결과를 검증했다.

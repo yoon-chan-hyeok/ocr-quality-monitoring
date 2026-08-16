@@ -1,8 +1,8 @@
-![Label-Free OCR Failure Monitoring](assets/project-hero.svg)
+![OCR Failure Risk Monitoring](assets/project-hero.svg)
 
 <div align="center">
 
-**정답지가 없는 OCR 운영 환경에서 위험 문서와 batch를 먼저 검수하도록 우선순위를 만듭니다.**
+**정답 transcription이 도착하기 전에 위험 문서와 batch를 먼저 검수하도록 우선순위를 만듭니다.**
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
 ![Tests](https://github.com/yoon-chan-hyeok/ocr-quality-monitoring/actions/workflows/tests.yml/badge.svg)
@@ -17,7 +17,7 @@
 
 OCR 품질은 CER이나 WER로 평가할 수 있지만, 두 지표에는 정답 transcription이 필요합니다. 새 문서가 들어온 직후에는 정답지가 없는 경우가 많고 모든 문서를 사람이 먼저 확인하기도 어렵습니다.
 
-이 프로젝트는 OCR confidence와 text embedding 기반 novelty를 비교해, 정답 없이도 먼저 확인할 문서와 batch를 정할 수 있는지 검토했습니다. Gold transcription은 detector 입력에 쓰지 않고 사후 평가에만 사용했습니다.
+이 프로젝트는 OCR confidence와 text embedding 기반 novelty를 비교해, scoring 시점에 정답 없이도 먼저 확인할 문서와 batch를 정할 수 있는지 검토했습니다. Gold transcription은 detector 입력에 쓰지 않았고, 연구 단계의 성능 평가에는 사용했습니다.
 
 ## 무엇을 비교했나
 
@@ -46,6 +46,8 @@ Embedding 결합은 모든 조건에서 좋아지지 않았습니다. 문서 전
 ## 공개 도구
 
 공개 저장소는 원 OCR corpus와 전체 inference pipeline 대신, 승인된 baseline과 새 candidate를 비교해 review queue를 만드는 CLI를 제공합니다.
+
+> **공개 범위:** 위 AUPRC 표는 원 실험의 결과입니다. 현재 공개된 CLI는 embedding drift 계산과 review queue 생성을 재현하지만, OCR inference와 corruption을 포함한 원 benchmark 결과를 다시 만드는 도구는 아닙니다.
 
 ~~~mermaid
 flowchart LR
