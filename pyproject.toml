@@ -5,11 +5,11 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "label-free-ocr-embedding-monitor"
 version = "0.1.0"
-description = "Black-box, label-free OCR anomaly monitoring with text embeddings"
+description = "OCR failure-risk triage with confidence and text-embedding drift signals"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
-authors = [{name = "OCR Embedding Monitor contributors"}]
+authors = [{name = "Chanhyeok Yoon", email = "ych1390@gmail.com"}]
 dependencies = [
   "numpy>=1.26",
   "scikit-learn>=1.4",
