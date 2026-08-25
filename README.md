@@ -4,14 +4,14 @@
 
 # OCR Failure Risk Monitoring
 
-**Gold transcription이 도착하기 전에 OCR confidence와 embedding drift로 review priority를 정합니다.**
+**OCR text log를 embedding space에서 비교해, gold transcription 없이 failure risk를 먼저 찾을 수 있는지 검증했습니다.**
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
 ![Tests](https://github.com/yoon-chan-hyeok/ocr-quality-monitoring/actions/workflows/tests.yml/badge.svg)
 ![License](https://img.shields.io/badge/License-MIT-0F766E)
 ![Scope](https://img.shields.io/badge/Scope-Risk%20Triage-D97706)
 
-[Problem](#1-problem-and-operating-setting) · [Method](#3-method-confidence-and-embedding-drift) · [Protocol](#4-experimental-protocol) · [Results](#5-results) · [CLI](#6-public-monitoring-cli) · [Quick start](#7-quick-start)
+[Problem](#1-problem-and-operating-setting) · [Core idea](#2-core-idea-text-log를-embedding-space에서-본다) · [Method](#4-method-confidence-and-embedding-drift) · [Results](#6-results) · [CLI](#7-public-monitoring-cli) · [Quick start](#8-quick-start)
 
 </div>
 
@@ -29,14 +29,29 @@ OCR의 문자 오류율을 계산하려면 사람이 만든 정답 전사본이 
 | Output | Record-level anomaly와 batch-level drift를 계산해 review priority를 반환합니다. |
 | Scope | 자동 교정이나 field-level correctness 판정은 구현 범위가 아닙니다. |
 
-## 2. Design rationale
+## 2. Core idea: text log를 embedding space에서 본다
+
+출발점은 이미지 원본이나 정답 전사본을 바로 확인하기 어렵고, OCR 결과가 text log로 쌓이는 상황이었습니다.
+
+> **OCR text를 embedding vector로 바꾼 뒤 정상 batch와 비교하면, vector가 다른 방향으로 이동하거나 평소보다 모이고 퍼지는 변화에서 failure risk를 찾을 수 있지 않을까?**
+
+이 질문을 개별 문서와 새 batch, 두 수준으로 나눴습니다.
+
+| 관찰 단위 | 아이디어를 계산으로 옮긴 방법 |
+|---|---|
+| 개별 문서 | 승인된 정상 문서 중 가장 가까운 이웃과의 cosine distance를 구해, 평소 text와 멀어진 문서를 찾습니다. |
+| 새 document batch | Embedding centroid의 방향 변화, MMD와 평균 이웃 거리 비율을 함께 계산해 전체 분포의 이동과 이웃 간격 변화를 봅니다. |
+
+Text만 있으면 embedding signal을 계산할 수 있습니다. OCR confidence도 남는 환경에서는 둘을 함께 비교할 수 있습니다. 실험 결과 confidence가 예상보다 강한 baseline이었고, embedding은 일부 오류와 batch 변화에서만 보완 효과가 있었습니다. 따라서 최종 설계에서는 embedding을 confidence의 대체재가 아니라, text log에서 추가로 얻을 수 있는 risk signal로 사용합니다.
+
+## 3. Design rationale
 
 - OCR confidence와 document embedding novelty를 gold-free review signal로 비교했습니다.
 - FUNSD 1,791건과 CORD v2 1,200건에서 문서 전체 열화와 일부 문자 오류를 나눠 살폈습니다.
 - 처음 예상과 달리 OCR 신뢰도가 강한 기준선이었습니다. 임베딩은 일부 오류 조건에서만 도움이 됐습니다.
 - 공개 저장소에는 승인된 document batch와 새 batch를 비교해 review queue를 만드는 CLI, example과 test를 담았습니다.
 
-## 3. Method: confidence and embedding drift
+## 4. Method: confidence and embedding drift
 
 | 신호 | 확인하려는 변화 |
 |---|---|
@@ -49,7 +64,7 @@ OCR의 문자 오류율을 계산하려면 사람이 만든 정답 전사본이 
 
 실제 문서에는 성격이 다른 오류가 섞여 있었습니다. 흐림이나 압축처럼 문서 전체가 깨지면 신뢰도와 임베딩이 함께 움직일 수 있습니다. 반면 금액, 날짜, 비율처럼 한 글자가 중요한 항목은 잘못 인식돼도 문서 전체 의미가 거의 달라지지 않습니다. 그래서 문서 전체 열화와 일부 문자 오류를 나눠 결과를 확인했습니다.
 
-## 4. Experimental protocol
+## 5. Experimental protocol
 
 | 데이터 | 문서 수 | 조건 수 | 평가 건수 |
 |---|---:|---:|---:|
@@ -58,7 +73,7 @@ OCR의 문자 오류율을 계산하려면 사람이 만든 정답 전사본이 
 
 흐림, 압축, 축소와 대비 변화처럼 문서 전체에 영향을 주는 조건을 포함했습니다. 숫자나 일부 문자만 달라지는 오류도 따로 확인했습니다. 정답 전사본은 신호를 계산할 때 사용하지 않았고, 각 방법이 오류 문서를 얼마나 잘 앞에 배치했는지 평가할 때만 사용했습니다.
 
-## 5. Results
+## 6. Results
 
 | 대표 조건 | 신뢰도 AUPRC | 함께 사용한 신호 | 결합 AUPRC |
 |---|---:|---|---:|
@@ -71,7 +86,7 @@ OCR의 문자 오류율을 계산하려면 사람이 만든 정답 전사본이 
 
 따라서 이 실험에서는 OCR 신뢰도를 먼저 쓰고, 임베딩 이탈도는 특정 오류 유형과 문서 묶음의 변화를 살피는 보조 신호로 두는 편이 맞았습니다. 중요한 필드 한두 개의 오류는 필드 추출과 규칙 검사로 따로 확인해야 합니다.
 
-## 6. Public monitoring CLI
+## 7. Public monitoring CLI
 
 공개 저장소에는 원 OCR 데이터와 전체 추론·훼손 생성 파이프라인을 넣지 않았습니다. 대신 승인된 기준 문서와 새 문서를 비교해 검수 목록을 만드는 작은 CLI를 제공합니다.
 
@@ -97,7 +112,7 @@ docs/                        원 실험의 범위와 후속 운영 계획
 outputs/                     예제 실행 결과
 ```
 
-## 7. Quick start
+## 8. Quick start
 
 ```powershell
 python -m venv .venv
@@ -111,7 +126,7 @@ Hash 방식은 외부 모델을 받지 않고 실행 흐름을 확인하기 위�
 
 원 실험의 데이터와 조건은 [EXPERIMENT_CONTEXT.md](docs/EXPERIMENT_CONTEXT.md), 필드 단위 탐지와 운영 확장 항목은 [LEARNING_ROADMAP.md](docs/LEARNING_ROADMAP.md)에 정리했습니다.
 
-## 8. Limitations
+## 9. Limitations
 
 - 결과는 FUNSD와 CORD v2에 인위적인 열화와 문자 오류를 적용한 조건에서 확인했습니다.
 - 문서 분포가 달라졌다고 해서 OCR 오류가 생겼다고 단정할 수는 없습니다.
