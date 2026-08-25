@@ -109,7 +109,7 @@ src/ocr_embedding_monitor/   입력 검사, 임베딩, 이탈도와 보고서 �
 examples/                    승인 문서와 새 문서 JSONL 예제
 tests/                       입력, 탐지기와 전체 실행 테스트
 docs/                        원 실험의 범위와 후속 운영 계획
-outputs/                     예제 실행 결과
+outputs/                     실행할 때 생성되는 검수 목록과 보고서
 ```
 
 ## 8. Quick start
