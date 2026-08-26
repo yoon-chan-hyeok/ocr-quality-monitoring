@@ -26,7 +26,9 @@ Confidence는 예상보다 강한 baseline이었다. Embedding signal은 일부 
 
 ## 공개 저장소와의 차이
 
-현재 저장소에는 원 corpus, OCR inference output과 전체 실험 harness를 포함하지 않는다. 공개 코드는 승인 baseline과 새 candidate를 받아 record anomaly와 batch drift를 계산하고 review queue를 만드는 작은 CLI다. Synthetic fixture와 deterministic backend는 실행 경로를 검증하기 위한 것이며, 위 연구 성능을 재현하지 않는다.
+현재 저장소에는 원 corpus, OCR inference output과 전체 실험 harness를 포함하지 않는다. 검증된 대표 결과와 해석 범위는 README에 정리했다.
+
+`src/ocr_embedding_monitor/`는 승인 baseline과 새 candidate를 받아 record anomaly와 batch drift를 계산하고 review queue를 만드는 CLI다. Synthetic fixture와 deterministic backend는 운영형 실행 경로를 빠르게 검증하기 위한 것이며, 연구 AUPRC를 재현하는 benchmark runner는 아니다.
 
 ## 작업 범위
 

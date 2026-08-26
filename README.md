@@ -49,7 +49,7 @@ Text만 있으면 embedding signal을 계산할 수 있습니다. OCR confidence
 - OCR confidence와 document embedding novelty를 gold-free review signal로 비교했습니다.
 - FUNSD 1,791건과 CORD v2 1,200건에서 문서 전체 열화와 일부 문자 오류를 나눠 살폈습니다.
 - 처음 예상과 달리 OCR 신뢰도가 강한 기준선이었습니다. 임베딩은 일부 오류 조건에서만 도움이 됐습니다.
-- 공개 저장소에는 승인된 document batch와 새 batch를 비교해 review queue를 만드는 CLI, example과 test를 담았습니다.
+- 공개 저장소에는 승인된 document batch와 새 batch를 비교해 review queue를 만드는 CLI와 검증된 대표 결과 그림을 담았습니다.
 
 ## 4. Method: confidence and embedding drift
 
@@ -71,7 +71,9 @@ Text만 있으면 embedding signal을 계산할 수 있습니다. OCR confidence
 | FUNSD | 199 | 9 | 1,791 |
 | CORD v2 | 200 | 6 | 1,200 |
 
-흐림, 압축, 축소와 대비 변화처럼 문서 전체에 영향을 주는 조건을 포함했습니다. 숫자나 일부 문자만 달라지는 오류도 따로 확인했습니다. 정답 전사본은 신호를 계산할 때 사용하지 않았고, 각 방법이 오류 문서를 얼마나 잘 앞에 배치했는지 평가할 때만 사용했습니다.
+고정된 RapidOCR 설정으로 흐림, 압축, 축소와 대비 변화처럼 문서 전체에 영향을 주는 조건을 만들었습니다. FUNSD는 149개 clean reference와 50개 test document, CORD v2는 100개 train과 100개 test receipt로 나눴습니다. Text embedding은 `BAAI/bge-m3`, clean-reference novelty는 cosine kNN `k=5`로 계산했습니다.
+
+정답 전사본은 신호를 만들 때 사용하지 않았고, 각 점수가 실제 오류를 얼마나 잘 앞에 배치했는지 사후 평가할 때만 사용했습니다. 주요 지표는 class imbalance를 반영하는 AUPRC로 두고 AUROC와 Recall@5% FPR을 함께 확인했습니다. 신뢰구간은 같은 문서에서 나온 여러 열화 조건을 한 묶음으로 resampling하는 document-cluster bootstrap으로 계산했습니다.
 
 ## 6. Results
 
@@ -86,9 +88,23 @@ Text만 있으면 embedding signal을 계산할 수 있습니다. OCR confidence
 
 따라서 이 실험에서는 OCR 신뢰도를 먼저 쓰고, 임베딩 이탈도는 특정 오류 유형과 문서 묶음의 변화를 살피는 보조 신호로 두는 편이 맞았습니다. 중요한 필드 한두 개의 오류는 필드 추출과 규칙 검사로 따로 확인해야 합니다.
 
+### 중요한 오류를 나눠 보니 관측 가능한 범위가 달랐습니다
+
+CORD의 `total`·`subtotal` 가격을 critical field로 두고, clean image에서는 맞았지만 열화 뒤 새로 누락되거나 다른 값으로 바뀐 경우를 harmful shift로 정의했습니다. 이 label은 detector 입력이 아니라 평가에만 사용했습니다.
+
+| 확인한 질문 | 결과 | 해석 |
+|---|---:|---|
+| Critical harm 전체 | Confidence AUPRC 0.595 → decomposed risk 0.627 | 평균 gain의 95% CI가 0을 포함해 전체 개선은 확정하지 않았습니다. |
+| Critical omission | AUPRC 0.564 → 0.668 | Bootstrap gain `+0.113`, 95% CI `[+0.013, +0.221]`로 누락에는 보완 신호가 있었습니다. |
+| Critical substitution | AUPRC 0.136 → 0.110 | 결합 신호가 confidence를 개선하지 못했고 Recall@5% FPR도 0이었습니다. |
+| OOD 숫자 치환 | Value-only embedding AUROC 0.972 | 정상 문서 공간에서 벗어난 값은 잘 구분했습니다. |
+| 정상 분포 안의 값 교환 | Value-only embedding AUROC 0.415 | 그럴듯한 값끼리 바뀌면 embedding distance로 구분하지 못했습니다. |
+
+이 결과를 통해 `embedding을 쓰면 OCR 오류를 찾을 수 있다`보다 좁은 결론을 남겼습니다. Text-only signal은 out-of-support value와 omission에는 도움이 될 수 있지만, 의미 공간 안에서 일어난 valid-value substitution의 correctness를 보장하지 않습니다. 운영에서는 confidence를 기본 triage 신호로 쓰고 embedding novelty, field coverage와 numeric-output shift를 함께 보되, 금액처럼 중요한 필드는 규칙 검사나 표본 검수를 별도로 붙여야 합니다.
+
 ## 7. Public monitoring CLI
 
-공개 저장소에는 원 OCR 데이터와 전체 추론·훼손 생성 파이프라인을 넣지 않았습니다. 대신 승인된 기준 문서와 새 문서를 비교해 검수 목록을 만드는 작은 CLI를 제공합니다.
+승인된 기준 문서와 새 문서를 비교해 검수 목록을 만드는 작은 CLI를 제공합니다. 원 corpus, OCR 추론 결과와 대용량 실험 중간 산출물은 공개하지 않았습니다. CLI는 연구 아이디어를 운영 입력 형식으로 단순화한 실행 예시입니다.
 
 ```mermaid
 flowchart LR
@@ -102,7 +118,7 @@ flowchart LR
     Q --> O["JSONL + JSON<br/>Markdown 보고서"]
 ```
 
-위 AUPRC 결과는 원 실험에서 얻은 값입니다. 공개 CLI는 임베딩 변화 계산과 검수 목록 생성 과정을 실행하지만, OCR 추론과 훼손 조건을 포함한 원 실험을 다시 만들지는 않습니다.
+위 AUPRC 결과는 원 실험의 검증된 집계값입니다. CLI는 임베딩 변화 계산과 검수 목록 생성 과정을 빠르게 확인하는 용도이며, 같은 성능 수치를 재현하는 benchmark runner는 아닙니다.
 
 ```text
 src/ocr_embedding_monitor/   입력 검사, 임베딩, 이탈도와 보고서 생성
