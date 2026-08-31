@@ -11,15 +11,15 @@
 ![License](https://img.shields.io/badge/License-MIT-0F766E)
 ![Scope](https://img.shields.io/badge/Scope-Risk%20Triage-D97706)
 
-[Problem](#1-problem-and-operating-setting) · [Core idea](#2-core-idea-text-log를-embedding-space에서-본다) · [Method](#4-method-confidence-and-embedding-drift) · [Results](#6-results) · [CLI](#7-public-monitoring-cli) · [Quick start](#8-quick-start)
+[문제](#1-왜-정답이-없는-시점에-품질-신호가-필요한가) · [아이디어](#2-아이디어의-출발점-ocr-text도-관측-데이터로-본다) · [검증](#3-가설을-검증-가능한-질문으로-나누기) · [결과](#6-검증-결과와-달라진-판단) · [CLI](#7-운영-형태-review-queue-cli) · [실행](#8-실행-방법)
 
 </div>
 
-## 1. Problem and operating setting
+## 1. 왜 정답이 없는 시점에 품질 신호가 필요한가
 
 OCR의 문자 오류율을 계산하려면 사람이 만든 정답 전사본이 필요합니다. 실제 처리 환경에서는 새 문서가 들어올 때마다 정답을 바로 만들기 어렵고, 모든 문서를 같은 순서로 검수하면 오류 가능성이 큰 문서가 뒤로 밀릴 수 있습니다.
 
-이 프로젝트에서는 정답 전사본이 아직 없는 시점에 사용할 수 있는 failure-risk signal을 찾았습니다. OCR confidence와 승인된 정상 문서에서 얼마나 벗어났는지를 나타내는 embedding novelty를 비교해 review queue를 만듭니다. 이 점수는 문서가 틀렸다고 판정하는 값이 아니라, 사람이 먼저 볼 대상을 고르는 기준입니다.
+이 프로젝트는 정답 전사본이 아직 없는 시점에 사용할 수 있는 failure-risk signal을 찾습니다. OCR confidence와 승인된 정상 문서에서 얼마나 벗어났는지를 나타내는 embedding novelty를 비교해 review queue를 만듭니다. 이 점수는 문서의 정오를 판정하지 않습니다. 사람이 먼저 볼 대상을 정하는 데 사용합니다.
 
 | 조건 | 가정한 상황 |
 |---|---|
@@ -29,11 +29,11 @@ OCR의 문자 오류율을 계산하려면 사람이 만든 정답 전사본이 
 | Output | Record-level anomaly와 batch-level drift를 계산해 review priority를 반환합니다. |
 | Scope | 자동 교정이나 field-level correctness 판정은 구현 범위가 아닙니다. |
 
-## 2. Core idea: text log를 embedding space에서 본다
+## 2. 아이디어의 출발점: OCR text도 관측 데이터로 본다
 
 출발점은 이미지 원본이나 정답 전사본을 바로 확인하기 어렵고, OCR 결과가 text log로 쌓이는 상황이었습니다.
 
-> **OCR text를 embedding vector로 바꾼 뒤 정상 batch와 비교하면, vector가 다른 방향으로 이동하거나 평소보다 모이고 퍼지는 변화에서 failure risk를 찾을 수 있지 않을까?**
+> **OCR text를 embedding vector로 바꿔 정상 batch와 비교하면, vector의 이동 방향과 퍼지는 정도로 이상 징후를 찾을 수 있지 않을까?**
 
 이 질문을 개별 문서와 새 batch, 두 수준으로 나눴습니다.
 
@@ -42,16 +42,21 @@ OCR의 문자 오류율을 계산하려면 사람이 만든 정답 전사본이 
 | 개별 문서 | 승인된 정상 문서 중 가장 가까운 이웃과의 cosine distance를 구해, 평소 text와 멀어진 문서를 찾습니다. |
 | 새 document batch | Embedding centroid의 방향 변화, MMD와 평균 이웃 거리 비율을 함께 계산해 전체 분포의 이동과 이웃 간격 변화를 봅니다. |
 
-Text만 있으면 embedding signal을 계산할 수 있습니다. OCR confidence도 남는 환경에서는 둘을 함께 비교할 수 있습니다. 실험 결과 confidence가 예상보다 강한 baseline이었고, embedding은 일부 오류와 batch 변화에서만 보완 효과가 있었습니다. 따라서 최종 설계에서는 embedding을 confidence의 대체재가 아니라, text log에서 추가로 얻을 수 있는 risk signal로 사용합니다.
+Text만 남는 환경에서도 embedding signal은 계산할 수 있습니다. OCR confidence가 함께 남는다면 두 신호를 비교할 수 있습니다. 실험에서는 confidence가 예상보다 강한 baseline이었고, embedding은 일부 오류와 batch 변화에서만 보완 효과가 있었습니다. 그래서 embedding을 confidence의 대체재가 아니라 text log에서 추가로 얻는 risk signal로 정리했습니다.
 
-## 3. Design rationale
+## 3. 가설을 검증 가능한 질문으로 나누기
 
-- OCR confidence와 document embedding novelty를 gold-free review signal로 비교했습니다.
-- FUNSD 1,791건과 CORD v2 1,200건에서 문서 전체 열화와 일부 문자 오류를 나눠 살폈습니다.
-- 처음 예상과 달리 OCR 신뢰도가 강한 기준선이었습니다. 임베딩은 일부 오류 조건에서만 도움이 됐습니다.
-- 공개 저장소에는 승인된 document batch와 새 batch를 비교해 review queue를 만드는 CLI와 검증된 대표 결과 그림을 담았습니다.
+처음 가설은 embedding 변화가 confidence에서 놓친 OCR 오류를 폭넓게 보완할 것이라는 생각이었습니다. 이를 세 가지 질문으로 나눠 확인했습니다.
 
-## 4. Method: confidence and embedding drift
+| 질문 | 확인 방법 |
+|---|---|
+| 문서 전체가 흐려지거나 압축되면 어떤 신호가 먼저 움직이는가? | Confidence와 document embedding novelty를 같은 조건에서 비교했습니다. |
+| 한두 글자만 바뀌는 오류도 문서 embedding으로 찾을 수 있는가? | 문서 전체 열화와 critical-field omission·substitution을 분리했습니다. |
+| 개별 문서의 이상과 batch 전체의 변화는 같은가? | Record-level novelty와 centroid·MMD 기반 batch drift를 따로 계산했습니다. |
+
+FUNSD 1,791건과 CORD v2 1,200건에서 이 질문을 평가했습니다. 예상과 달리 confidence가 강한 기준선이었고, embedding은 일부 오류 조건에서만 도움이 됐습니다. 이 결과에 맞춰 최종 CLI도 두 신호를 함께 보여주는 검수 도구로 만들었습니다.
+
+## 4. 어떤 신호를 계산했는가
 
 | 신호 | 확인하려는 변화 |
 |---|---|
@@ -64,7 +69,7 @@ Text만 있으면 embedding signal을 계산할 수 있습니다. OCR confidence
 
 실제 문서에는 성격이 다른 오류가 섞여 있었습니다. 흐림이나 압축처럼 문서 전체가 깨지면 신뢰도와 임베딩이 함께 움직일 수 있습니다. 반면 금액, 날짜, 비율처럼 한 글자가 중요한 항목은 잘못 인식돼도 문서 전체 의미가 거의 달라지지 않습니다. 그래서 문서 전체 열화와 일부 문자 오류를 나눠 결과를 확인했습니다.
 
-## 5. Experimental protocol
+## 5. 평가 설계: label은 사후 채점에만 사용
 
 | 데이터 | 문서 수 | 조건 수 | 평가 건수 |
 |---|---:|---:|---:|
@@ -75,7 +80,7 @@ Text만 있으면 embedding signal을 계산할 수 있습니다. OCR confidence
 
 정답 전사본은 신호를 만들 때 사용하지 않았고, 각 점수가 실제 오류를 얼마나 잘 앞에 배치했는지 사후 평가할 때만 사용했습니다. 주요 지표는 class imbalance를 반영하는 AUPRC로 두고 AUROC와 Recall@5% FPR을 함께 확인했습니다. 신뢰구간은 같은 문서에서 나온 여러 열화 조건을 한 묶음으로 resampling하는 document-cluster bootstrap으로 계산했습니다.
 
-## 6. Results
+## 6. 검증 결과와 달라진 판단
 
 | 대표 조건 | 신뢰도 AUPRC | 함께 사용한 신호 | 결합 AUPRC |
 |---|---:|---|---:|
@@ -102,7 +107,7 @@ CORD의 `total`·`subtotal` 가격을 critical field로 두고, clean image에�
 
 이 결과를 통해 `embedding을 쓰면 OCR 오류를 찾을 수 있다`보다 좁은 결론을 남겼습니다. Text-only signal은 out-of-support value와 omission에는 도움이 될 수 있지만, 의미 공간 안에서 일어난 valid-value substitution의 correctness를 보장하지 않습니다. 운영에서는 confidence를 기본 triage 신호로 쓰고 embedding novelty, field coverage와 numeric-output shift를 함께 보되, 금액처럼 중요한 필드는 규칙 검사나 표본 검수를 별도로 붙여야 합니다.
 
-## 7. Public monitoring CLI
+## 7. 운영 형태: review queue CLI
 
 승인된 기준 문서와 새 문서를 비교해 검수 목록을 만드는 작은 CLI를 제공합니다. 원 corpus, OCR 추론 결과와 대용량 실험 중간 산출물은 공개하지 않았습니다. CLI는 연구 아이디어를 운영 입력 형식으로 단순화한 실행 예시입니다.
 
@@ -128,7 +133,7 @@ docs/                        원 실험의 범위와 후속 운영 계획
 outputs/                     실행할 때 생성되는 검수 목록과 보고서
 ```
 
-## 8. Quick start
+## 8. 실행 방법
 
 ```powershell
 python -m venv .venv
@@ -142,7 +147,7 @@ Hash 방식은 외부 모델을 받지 않고 실행 흐름을 확인하기 위�
 
 원 실험의 데이터와 조건은 [EXPERIMENT_CONTEXT.md](docs/EXPERIMENT_CONTEXT.md), 필드 단위 탐지와 운영 확장 항목은 [LEARNING_ROADMAP.md](docs/LEARNING_ROADMAP.md)에 정리했습니다.
 
-## 9. Limitations
+## 9. 해석 범위와 한계
 
 - 결과는 FUNSD와 CORD v2에 인위적인 열화와 문자 오류를 적용한 조건에서 확인했습니다.
 - 문서 분포가 달라졌다고 해서 OCR 오류가 생겼다고 단정할 수는 없습니다.
