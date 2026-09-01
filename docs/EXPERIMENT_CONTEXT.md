@@ -22,11 +22,27 @@ Blur, compression, downsampling과 contrast 변화처럼 문서 전체에 영향
 
 Confidence는 예상보다 강한 baseline이었다. Embedding signal은 일부 failure type을 보완했지만 모든 조건에서 성능을 높이지 않았다. 따라서 embedding이 confidence를 대체한다고 결론내리지 않았다.
 
+대표 결과의 machine-readable 집계는 [benchmark_summary.csv](../results/benchmark_summary.csv)에 저장했다.
+
+### Critical field 분석
+
+CORD의 `total`과 `subtotal`을 critical field로 두고 omission과 substitution을 분리했다.
+
+| 조건 | 지표 | Confidence | 결합 또는 embedding 신호 | 해석 |
+|---|---|---:|---:|---|
+| Critical harm 전체 | AUPRC | 0.595 | 0.627 | 평균 gain의 95% CI가 0을 포함했다. |
+| Critical omission | AUPRC | 0.564 | 0.668 | Gain `+0.113`, 95% CI `[+0.013, +0.221]` |
+| Critical substitution | AUPRC | 0.136 | 0.110 | Recall@5% FPR도 0이었다. |
+| OOD 숫자 치환 | AUROC | 해당 없음 | 0.972 | Value-only embedding으로 정상 범위 밖 값을 구분했다. |
+| 정상 분포 안의 값 교환 | AUROC | 해당 없음 | 0.415 | 그럴듯한 값끼리 바뀌면 구분하지 못했다. |
+
+세부 집계는 [critical_field_summary.csv](../results/critical_field_summary.csv)에 저장했다. 이 수치는 raw prediction을 대신하는 재현 결과가 아니라, 완료된 실험에서 남긴 검증 집계다.
+
 문서 전체가 훼손된 경우에는 confidence나 embedding novelty가 움직일 수 있다. 반면 금액, 비율, 금리, 날짜처럼 일부 field만 잘못 인식되면 문서 전체 의미는 거의 유지될 수 있다. 이런 local critical error에는 field extraction, rule check와 별도 검증이 필요하다.
 
 ## 공개 저장소와의 차이
 
-현재 저장소에는 원 corpus, OCR inference output과 전체 실험 harness를 포함하지 않는다. 검증된 대표 결과와 해석 범위는 README에 정리했다.
+현재 저장소에는 원 corpus, OCR inference output과 전체 실험 harness를 포함하지 않는다. 검증된 대표 결과와 해석 범위는 README와 `results/`의 aggregate CSV에 정리했다.
 
 `src/ocr_embedding_monitor/`는 승인 baseline과 새 candidate를 받아 record anomaly와 batch drift를 계산하고 review queue를 만드는 CLI다. Synthetic fixture와 deterministic backend는 운영형 실행 경로를 빠르게 검증하기 위한 것이며, 연구 AUPRC를 재현하는 benchmark runner는 아니다.
 

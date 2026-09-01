@@ -87,6 +87,8 @@ FUNSD 1,791건과 CORD v2 1,200건에서 이 질문을 평가했습니다. 예�
 | FUNSD 전체 열화 | 0.8295 | 신뢰도 + 임베딩 방향 특징 | 0.8454 |
 | CORD 영문자 불일치 | 0.5907 | 신뢰도 + kNN5 | 0.6904 |
 
+표의 집계값은 [benchmark_summary.csv](results/benchmark_summary.csv)에 저장했습니다.
+
 ![대표 OCR failure-risk 결과](assets/representative-results.svg)
 
 임베딩을 더한다고 모든 조건이 좋아지지는 않았습니다. 문서 전체가 훼손된 조건에서는 OCR 신뢰도만으로도 오류 위험을 잘 정렬했습니다. 일부 조건에서는 임베딩을 함께 썼을 때 결과가 좋아졌지만, 금액이나 날짜처럼 국소적인 오류는 두 신호 모두 놓칠 수 있었습니다.
@@ -107,9 +109,13 @@ CORD의 `total`·`subtotal` 가격을 critical field로 두고, clean image에�
 
 이 결과를 통해 `embedding을 쓰면 OCR 오류를 찾을 수 있다`보다 좁은 결론을 남겼습니다. Text-only signal은 out-of-support value와 omission에는 도움이 될 수 있지만, 의미 공간 안에서 일어난 valid-value substitution의 correctness를 보장하지 않습니다. 운영에서는 confidence를 기본 triage 신호로 쓰고 embedding novelty, field coverage와 numeric-output shift를 함께 보되, 금액처럼 중요한 필드는 규칙 검사나 표본 검수를 별도로 붙여야 합니다.
 
+Critical-field 수치와 신뢰구간은 [critical_field_summary.csv](results/critical_field_summary.csv)에 따로 남겼습니다.
+
 ## 7. 운영 형태: review queue CLI
 
 승인된 기준 문서와 새 문서를 비교해 검수 목록을 만드는 작은 CLI를 제공합니다. 원 corpus, OCR 추론 결과와 대용량 실험 중간 산출물은 공개하지 않았습니다. CLI는 연구 아이디어를 운영 입력 형식으로 단순화한 실행 예시입니다.
+
+Dashboard나 service를 먼저 만들기보다 입력 schema, score와 output contract가 실제로 이어지는지 확인하는 데 집중했습니다. Synthetic JSONL과 deterministic hash backend를 사용하면 외부 모델 없이 전체 경로를 실행할 수 있고, 의미 기반 embedding은 선택적으로 연결할 수 있습니다.
 
 ```mermaid
 flowchart LR
@@ -130,6 +136,7 @@ src/ocr_embedding_monitor/   입력 검사, 임베딩, 이탈도와 보고서 �
 examples/                    승인 문서와 새 문서 JSONL 예제
 tests/                       입력, 탐지기와 전체 실행 테스트
 docs/                        원 실험의 범위와 후속 운영 계획
+results/                     README에 사용한 검증 집계 CSV
 outputs/                     실행할 때 생성되는 검수 목록과 보고서
 ```
 

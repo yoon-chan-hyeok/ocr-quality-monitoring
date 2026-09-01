@@ -1,0 +1,6 @@
+condition,metric,baseline_signal,baseline_value,combined_signal,combined_value,gain,ci_low,ci_high,recall_at_5pct_fpr,interpretation
+critical-harm,auprc,confidence,0.595,decomposed-risk,0.627,,,,,mean-gain-ci-includes-zero
+critical-omission,auprc,confidence,0.564,decomposed-risk,0.668,0.113,0.013,0.221,,complementary-signal-observed
+critical-substitution,auprc,confidence,0.136,decomposed-risk,0.110,,,,0.0,no-improvement
+ood-numeric-substitution,auroc,,,value-only-embedding,0.972,,,,,out-of-support-values-separable
+in-distribution-value-swap,auroc,,,value-only-embedding,0.415,,,,,valid-value-swap-not-separable
