@@ -2,19 +2,23 @@
 
 [한국어](README.md)
 
-This project compares signals for deciding which OCR documents to review before ground-truth transcripts are available. The initial idea was to embed OCR text and inspect how its distribution moves away from accepted logs.
+This project studies which OCR documents to review before ingesting regulatory PDFs into a RAG knowledge base, when new ground-truth transcripts are unavailable. The initial idea was to compare each document's text embedding with previously accepted documents and use the distance to prioritize review.
 
 Confidence was a strong baseline. Embeddings added information for some character errors, but missed plausible substitutions such as one valid price being replaced by another. The result is a clearer account of which failures logs can reveal, alongside a small CLI for reviewing text anomalies.
 
 ## Intended use
 
-The target setting is a review stage after a fixed OCR engine processes new receipts or forms. The monitor can use output text, confidence metadata and accepted reference logs, without model weights or character logits. Risk ranking could direct limited review time toward suspicious records and batches. Review-time savings have not been measured.
+The intended review stage sits between OCR and RAG/KB ingestion so that misread numbers or clauses can be checked before becoming retrieval evidence. This is an assumed use case, not a deployed regulatory service. FUNSD forms and CORD receipts provide public, labeled test data rather than a reproduction of regulatory documents.
+
+The monitor can use output text, confidence metadata and accepted reference logs, without model weights or character logits. Risk ranking could direct limited review time toward suspicious records. Review-time savings have not been measured.
 
 The public implementation accepts text JSONL, compares it with an accepted reference, and exports review recommendations. It does not correct OCR text or certify that a value is correct.
 
 ## Idea and evaluation
 
 The hypothesis was that corrupted OCR output would move away from normal text in embedding space. I separated document degradation, local character mismatch and critical-field errors because a wrong price can leave the meaning of a receipt almost unchanged.
+
+The idea extends my work on answer-embedding changes in RAG to OCR text. Individual-document novelty was the starting point; batch centroid, MMD and neighbor-distance summaries were added as supplementary observations. Image corruptions stress-test different input conditions rather than replicate a production error distribution.
 
 The experiments used fixed RapidOCR settings and `BAAI/bge-m3` embeddings, with cosine kNN `k=5` for the principal clean-reference comparison. FUNSD contains 149 reference/training documents and 50 test documents across nine conditions; CORD v2 uses 100 training and 100 test receipts across six conditions. The totals, 1,791 and 1,200 document-condition records, include training/reference documents.
 
