@@ -1,4 +1,4 @@
-# OCR Failure Risk Monitoring
+# OCR Quality Monitor: Review Prioritization with Text Embeddings
 
 [한국어](README.md)
 

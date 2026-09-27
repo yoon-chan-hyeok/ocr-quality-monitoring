@@ -1,4 +1,4 @@
-# OCR Failure Risk Monitoring
+# OCR Quality Monitor: 텍스트 임베딩 기반 검수 우선순위 산정
 
 [English](README.en.md)
 
